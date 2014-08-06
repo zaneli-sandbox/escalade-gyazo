@@ -1,6 +1,8 @@
 #escalade-gyazo
 [Gyazo](https://gyazo.com/ "Gyazo") API Scala wrapper library.
 
+[![Build Status](https://api.travis-ci.org/zaneli/escalade-gyazo.png?branch=master)](https://travis-ci.org/zaneli/escalade-gyazo)
+
 ## Usage
 
 ### List
