@@ -9,15 +9,7 @@ import org.json4s.native.JsonMethods.parse
 import scalaj.http.{ Http, HttpOptions, MultiPart }
 import scalaj.http.Http.Request
 
-class GyazoClient(accessToken: String) {
-
-  private[this]type StatusCode = Int
-  private[this]type ETag = String
-
-  private[this] val apiHost = "api.gyazo.com"
-  private[this] val uploadHost = "upload.gyazo.com"
-
-  private[this] val options = List(HttpOptions.connTimeout(5000), HttpOptions.readTimeout(5000))
+class GyazoClient(accessToken: String, base: BaseClient = HttpClient) {
 
   private[this] var cachedImages: Option[(ETag, List[Image])] = None
 
@@ -29,8 +21,8 @@ class GyazoClient(accessToken: String) {
   def list(page: Int = 1, perPage: Int = 20): ImagesList = {
     val params = Map("page" -> page, "per_page" -> perPage)
     val (code, headers, body) = cachedImages match {
-      case Some((etag, _)) => exec("images", params, "get", tokenHeader, etagHeader(etag))
-      case _ => exec("images", params, "get", tokenHeader)
+      case Some((etag, _)) => base.exec("images", params, "get", tokenHeader, etagHeader(etag))
+      case _ => base.exec("images", params, "get", tokenHeader)
     }
     if (code == 304) {
       val res = ImagesList(headers)
@@ -43,25 +35,39 @@ class GyazoClient(accessToken: String) {
   }
 
   def upload(image: File): Image = {
-    val (_, _, body) = multipart("upload", "imagedata", image, tokenHeader)
+    val (_, _, body) = base.multipart("upload", "imagedata", image, tokenHeader)
     Image(parse(body))
   }
 
   def delete(imageId: String): (String, String) = {
     implicit val formats = DefaultFormats
-    val (_, _, body) = exec(s"images/${imageId}", Map(), "delete", tokenHeader)
+    val (_, _, body) = base.exec(s"images/${imageId}", Map(), "delete", tokenHeader)
     val value = parse(body)
     val JString(deletedId) = value \ "image_id"
     val JString(deletedImageType) = value \ "type"
     (deletedId, deletedImageType)
   }
+}
 
-  private[this] def exec(
+trait BaseClient {
+  def exec(
+    path: String, params: Map[String, Any], method: String, hs: (String, String)*): (StatusCode, Map[String, List[String]], String)
+  def multipart(
+    path: String, name: String, file: File, hs: (String, String)*): (StatusCode, Map[String, List[String]], String)
+}
+
+private[gyazo] object HttpClient extends BaseClient {
+  private[this] val apiHost = "api.gyazo.com"
+  private[this] val uploadHost = "upload.gyazo.com"
+
+  private[this] val options = List(HttpOptions.connTimeout(5000), HttpOptions.readTimeout(5000))
+
+  override def exec(
     path: String, params: Map[String, Any], method: String, hs: (String, String)*): (StatusCode, Map[String, List[String]], String) = {
     doExec(Http(mkUrl(apiHost, path)).params(params.map { case (k, v) => (k, v.toString) }), method, hs: _*)
   }
 
-  private[this] def multipart(
+  override def multipart(
     path: String, name: String, file: File, hs: (String, String)*): (StatusCode, Map[String, List[String]], String) = {
     val req = Http.multipart(mkUrl(uploadHost, path), MultiPart(name, file.getName, getMimeType(file), Files.readAllBytes(file.toPath)))
     doExec(req, "post", hs: _*)

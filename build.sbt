@@ -16,7 +16,7 @@ libraryDependencies ++= {
     "eu.medsea.mimeutil" % "mime-util" % "2.1.3",
     "org.json4s" %% "json4s-native" % "3.2.10" % "compile",
     "org.scalaj" %% "scalaj-http" % "0.3.16" % "compile",
-    "org.specs2" %% "specs2" % "2.3.13" % "test"
+    "org.scalatest" %% "scalatest" % "2.2.1" % "test"
   )
 }
 
