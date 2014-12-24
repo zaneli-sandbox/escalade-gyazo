@@ -7,7 +7,7 @@ case class ImagesList(images: List[Image], totalCount: Int, currentPage: Int, pe
 
 object ImagesList {
 
-  def apply(headers: Map[String, List[String]]): ImagesList = {
+  def apply(headers: Map[String, String]): ImagesList = {
     val totalCount = getHeaderValue(headers, "X-Total-Count", _.toInt).getOrElse(0)
     val currentPage = getHeaderValue(headers, "X-Current-Page", _.toInt).getOrElse(1)
     val perPage = getHeaderValue(headers, "X-Per-Page", _.toInt).getOrElse(20)
@@ -16,6 +16,6 @@ object ImagesList {
     ImagesList(Nil, totalCount, currentPage, perPage, userType)
   }
 
-  def apply(headers: Map[String, List[String]], value: JValue): ImagesList =
+  def apply(headers: Map[String, String], value: JValue): ImagesList =
     apply(headers).copy(images = value.children.map(Image.apply))
 }

@@ -39,7 +39,7 @@ class GyazoClientSuite extends FunSuite {
   test("get list (set params)") {
     val mock = new MockClient(
       expectedListRes,
-      Map("X-Total-Count" -> List("350"), "X-Current-Page" -> List("3"), "X-Per-Page" -> List("100"), "X-User-Type" -> List("lite")))
+      Map("X-Total-Count" -> "350", "X-Current-Page" -> "3", "X-Per-Page" -> "100", "X-User-Type" -> "lite"))
     val client = getClient(mock)
 
     val res = client.list(page = 3, perPage = 100)

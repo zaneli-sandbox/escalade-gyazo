@@ -6,8 +6,7 @@ import java.io.{ File, FileInputStream }
 import java.nio.file.Files
 import org.json4s.{ DefaultFormats, JString }
 import org.json4s.native.JsonMethods.parse
-import scalaj.http.{ Http, HttpOptions, MultiPart }
-import scalaj.http.Http.Request
+import scalaj.http.{ Http, HttpRequest, MultiPart }
 
 class GyazoClient(accessToken: String, base: BaseClient = HttpClient) {
 
@@ -51,30 +50,35 @@ class GyazoClient(accessToken: String, base: BaseClient = HttpClient) {
 
 trait BaseClient {
   def exec(
-    path: String, params: Map[String, Any], method: String, hs: (String, String)*): (StatusCode, Map[String, List[String]], String)
+    path: String, params: Map[String, Any], method: String, hs: (String, String)*): (StatusCode, Map[String, String], String)
   def multipart(
-    path: String, name: String, file: File, hs: (String, String)*): (StatusCode, Map[String, List[String]], String)
+    path: String, name: String, file: File, hs: (String, String)*): (StatusCode, Map[String, String], String)
 }
 
 private[gyazo] object HttpClient extends BaseClient {
   private[this] val apiHost = "api.gyazo.com"
   private[this] val uploadHost = "upload.gyazo.com"
 
-  private[this] val options = List(HttpOptions.connTimeout(5000), HttpOptions.readTimeout(5000))
-
   override def exec(
-    path: String, params: Map[String, Any], method: String, hs: (String, String)*): (StatusCode, Map[String, List[String]], String) = {
+    path: String, params: Map[String, Any], method: String, hs: (String, String)*): (StatusCode, Map[String, String], String) = {
     doExec(Http(mkUrl(apiHost, path)).params(params.map { case (k, v) => (k, v.toString) }), method, hs: _*)
   }
 
   override def multipart(
-    path: String, name: String, file: File, hs: (String, String)*): (StatusCode, Map[String, List[String]], String) = {
-    val req = Http.multipart(mkUrl(uploadHost, path), MultiPart(name, file.getName, getMimeType(file), Files.readAllBytes(file.toPath)))
+    path: String, name: String, file: File, hs: (String, String)*): (StatusCode, Map[String, String], String) = {
+    val req = Http(mkUrl(uploadHost, path)).postMulti(MultiPart(name, file.getName, getMimeType(file), Files.readAllBytes(file.toPath)))
     doExec(req, "post", hs: _*)
   }
 
-  private[this] def doExec(req: Request, method: String, hs: (String, String)*): (StatusCode, Map[String, List[String]], String) = {
-    req.method(method).options(options).headers(hs: _*).asHeadersAndParse(Http.readString)
+  private[this] def doExec(req: HttpRequest, method: String, hs: (String, String)*): (StatusCode, Map[String, String], String) = {
+    val res = ((req.method(method).timeout(connTimeoutMs = 5000, readTimeoutMs = 5000), hs) match {
+      case (req, Nil) => req
+      case (req, _) => req.headers(hs.head, hs.tail: _*)
+    }).asString
+    if (res.isError) {
+      throw new IllegalStateException(s"${res.code}: ${res.body}")
+    }
+    (res.code, res.headers.toMap, res.body)
   }
 
   private[this] def mkUrl(host: String, path: String): String = s"https://${host}/api/${path}"

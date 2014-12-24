@@ -7,13 +7,13 @@ object TestUtil {
 
   private[gyazo] def getClient(client: MockClient): GyazoClient = new GyazoClient("", client)
 
-  private[gyazo] class MockClient(body: String, header: Map[String, List[String]] = Map()) extends BaseClient {
+  private[gyazo] class MockClient(body: String, header: Map[String, String] = Map()) extends BaseClient {
     override def exec(
-      path: String, params: Map[String, Any], method: String, hs: (String, String)*): (StatusCode, Map[String, List[String]], String) = {
+      path: String, params: Map[String, Any], method: String, hs: (String, String)*): (StatusCode, Map[String, String], String) = {
       (200, header, body)
     }
     override def multipart(
-      path: String, name: String, file: File, hs: (String, String)*): (StatusCode, Map[String, List[String]], String) = {
+      path: String, name: String, file: File, hs: (String, String)*): (StatusCode, Map[String, String], String) = {
       (200, header, body)
     }
   }
